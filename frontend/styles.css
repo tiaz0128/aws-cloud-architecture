@@ -589,6 +589,55 @@ body {
     background: #4b5563;
 }
 
+.action-btn.share-btn {
+    background: #2563eb;
+}
+
+.action-btn.share-btn:hover {
+    background: #1d4ed8;
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 90vw;
+    text-align: center;
+}
+
+.toast-show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-success {
+    background: #059669;
+}
+
+.toast-warning {
+    background: #d97706;
+}
+
+.toast-error {
+    background: #dc2626;
+}
+
+.toast-info {
+    background: #2563eb;
+}
+
 /* Mermaid Styles */
 .mermaid {
     background: white !important;

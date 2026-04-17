@@ -6,6 +6,7 @@ const CONFIG = {
 
 // Global state
 let currentMermaidCode = '';
+let currentDiagramId = '';
 let mermaidCounter = 0;
 let currentTab = 'ai-generator';
 let currentDiagramTab = 'diagram-view';
@@ -214,6 +215,7 @@ async function generateDiagram() {
 
         console.log('API 응답 성공, 다이어그램 렌더링 시작');
         currentMermaidCode = data.mermaid_code;
+        currentDiagramId = data.id || '';
         await renderMermaidDiagram(currentMermaidCode);
         showDiagramActions();
 
@@ -518,6 +520,9 @@ function handleActionClick(event) {
         case 'copy-code':
             copyMermaidCode();
             break;
+        case 'share':
+            shareDiagram();
+            break;
     }
 }
 
@@ -578,6 +583,9 @@ function initializeApp() {
 
     console.log('앱 초기화 완료');
     console.log('API URL:', getApiBaseUrl());
+
+    // Check for shared diagram in URL
+    checkSharedDiagram();
 }
 
 // SVG Zoom and Pan functionality
@@ -875,6 +883,7 @@ async function loadDiagramFromHistory(diagram) {
 
     // Render the diagram
     currentMermaidCode = diagram.mermaid_code;
+    currentDiagramId = diagram.id || '';
 
     showLoading(false);
     try {
@@ -929,6 +938,94 @@ async function deleteDiagramFromHistory(diagramId, itemElement) {
         console.error('다이어그램 삭제 실패:', error);
         alert('삭제에 실패했습니다. 다시 시도해주세요.');
     }
+}
+
+// Share functionality
+function shareDiagram() {
+    if (!currentDiagramId) {
+        showToast('공유하려면 먼저 AI로 다이어그램을 생성하세요.', 'warning');
+        return;
+    }
+
+    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${currentDiagramId}`;
+
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast('공유 링크가 클립보드에 복사되었습니다!', 'success');
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast('공유 링크가 클립보드에 복사되었습니다!', 'success');
+        } catch {
+            showToast('링크 복사에 실패했습니다. URL을 직접 복사해주세요.', 'error');
+            prompt('공유 링크:', shareUrl);
+        }
+        document.body.removeChild(textArea);
+    });
+}
+
+async function checkSharedDiagram() {
+    const params = new URLSearchParams(window.location.search);
+    const sharedId = params.get('share');
+
+    if (!sharedId) return;
+
+    console.log('공유 다이어그램 로드:', sharedId);
+
+    // Show loading
+    switchDiagramTab('diagram-view');
+    showLoading(false);
+
+    try {
+        const API_BASE_URL = getApiBaseUrl();
+        const response = await fetch(`${API_BASE_URL}/diagrams/${sharedId}`);
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('공유된 다이어그램을 찾을 수 없습니다. 삭제되었거나 잘못된 링크입니다.');
+            }
+            throw new Error(`다이어그램 로드 실패 (${response.status})`);
+        }
+
+        const data = await response.json();
+
+        currentMermaidCode = data.mermaid_code;
+        currentDiagramId = sharedId;
+
+        await renderMermaidDiagram(data.mermaid_code);
+        showDiagramActions();
+
+        // Populate manual code editor
+        const mermaidCodeInput = document.getElementById('mermaidCode');
+        if (mermaidCodeInput) {
+            mermaidCodeInput.value = data.mermaid_code;
+        }
+
+        showToast('공유된 다이어그램을 불러왔습니다.', 'success');
+
+    } catch (error) {
+        console.error('공유 다이어그램 로드 실패:', error);
+        showError(`${error.message}`);
+    }
+}
+
+// Toast notification
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.className = `toast toast-${type} toast-show`;
+
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+    }, 3000);
 }
 
 // Start app when DOM is loaded
