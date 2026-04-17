@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - echo Logged in to ECR successfully
+  
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+      - echo Docker image built and tagged successfully
+  
+  post_build:
+    commands:
+      - echo Pushing Docker image to ECR...
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - docker push $ECR_REPOSITORY_URI:latest
+      - echo Docker image pushed to ECR successfully
+      - echo Updating App Runner service...
+      - aws apprunner start-deployment --service-arn $APP_RUNNER_SERVICE_ARN --region $AWS_REGION
+      - echo App Runner deployment initiated successfully
+
+artifacts:
+  files:
+    - '**/*'

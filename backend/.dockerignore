@@ -1,0 +1,95 @@
+# Git 관련 파일
+.git
+.gitignore
+.gitattributes
+
+# Python 관련 파일 (더 구체적으로)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+.tox/
+.cache/
+*.egg
+
+# 가상환경 (매우 중요!)
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# IDE 및 에디터 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+
+# 운영체제 관련
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# 로그 파일
+*.log
+logs/
+*.out
+
+# 임시 파일
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# 문서 및 개발 관련 (README.md는 포함할 수도 있음)
+docs/
+screenshots/
+*.md
+!README.md
+
+# Docker 관련
+.dockerignore
+docker-compose*.yml
+.docker/
+
+# CI/CD 관련
+.github/
+.gitlab-ci.yml
+buildspec.yml
+deploy.sh
+Jenkinsfile
+
+# 환경 변수 파일
+.env
+.env.*
+config.json
+secrets.json
+
+# 테스트 관련
+tests/
+test_*.py
+*_test.py
+pytest.ini
+.pytest_cache/
+
+# 기타 설정 파일
+.editorconfig
+.flake8
+.pylintrc
+.python-version
+
+# 로컬 개발 파일
+*.local
+.DS_Store
