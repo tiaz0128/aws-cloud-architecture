@@ -34,8 +34,8 @@ class BedrockClient:
 
         try:
             bedrock_config = Config(
-                read_timeout=120,
-                connect_timeout=10,
+                read_timeout=300,
+                connect_timeout=15,
                 retries={"max_attempts": 0}  # 자체 재시도 로직 사용
             )
             self.client = boto3.client(
