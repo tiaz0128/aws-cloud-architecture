@@ -8,6 +8,8 @@ const CONFIG = {
 let currentMermaidCode = '';
 let mermaidCounter = 0;
 let currentTab = 'ai-generator';
+let currentDiagramTab = 'diagram-view';
+let historyLoaded = false;
 
 // SVG zoom and pan state
 let svgState = {
@@ -214,6 +216,9 @@ async function generateDiagram() {
         currentMermaidCode = data.mermaid_code;
         await renderMermaidDiagram(currentMermaidCode);
         showDiagramActions();
+
+        // Refresh history so the new diagram appears
+        historyLoaded = false;
 
     } catch (error) {
         console.error('API 에러:', error);
@@ -551,6 +556,23 @@ function initializeApp() {
     // Action buttons - use event delegation
     document.addEventListener('click', handleActionClick);
 
+    // Diagram panel tab switching
+    document.querySelectorAll('.diagram-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabName = e.target.dataset.diagramTab;
+            switchDiagramTab(tabName);
+        });
+    });
+
+    // History refresh button
+    const refreshBtn = document.getElementById('refreshHistoryBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            historyLoaded = false;
+            loadHistory();
+        });
+    }
+
     // Initialize SVG controls
     initializeSVGControls();
 
@@ -688,6 +710,225 @@ function dragTouch(e) {
     svgState.translateX = touch.clientX - svgState.startX;
     svgState.translateY = touch.clientY - svgState.startY;
     applySVGTransform();
+}
+
+// Diagram panel tab switching
+function switchDiagramTab(tabName) {
+    document.querySelectorAll('.diagram-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-diagram-tab="${tabName}"]`).classList.add('active');
+
+    document.querySelectorAll('.diagram-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(tabName).classList.add('active');
+
+    currentDiagramTab = tabName;
+
+    // Load history when switching to history tab for the first time
+    if (tabName === 'history-view' && !historyLoaded) {
+        loadHistory();
+    }
+}
+
+// History functions
+async function loadHistory() {
+    const historyList = document.getElementById('historyList');
+    if (!historyList) return;
+
+    historyList.innerHTML = `
+        <div class="history-loading">
+            <div class="spinner"></div>
+            <p>불러오는 중...</p>
+        </div>
+    `;
+
+    try {
+        const API_BASE_URL = getApiBaseUrl();
+        const response = await fetch(`${API_BASE_URL}/diagrams?limit=20`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        historyLoaded = true;
+
+        if (!data.diagrams || data.diagrams.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-empty">
+                    <div class="history-empty-icon">📭</div>
+                    <h3>저장된 다이어그램이 없습니다</h3>
+                    <p>AI로 다이어그램을 생성하면 여기에 표시됩니다.</p>
+                </div>
+            `;
+            return;
+        }
+
+        historyList.innerHTML = '';
+        data.diagrams.forEach(diagram => {
+            const item = createHistoryItem(diagram);
+            historyList.appendChild(item);
+        });
+
+    } catch (error) {
+        console.error('히스토리 로드 실패:', error);
+        historyList.innerHTML = `
+            <div class="history-empty">
+                <div class="history-empty-icon">⚠️</div>
+                <h3>불러오기 실패</h3>
+                <p>API 서버에 연결할 수 없습니다.<br>잠시 후 다시 시도해주세요.</p>
+            </div>
+        `;
+    }
+}
+
+function createHistoryItem(diagram) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+
+    const providerClass = `provider-${diagram.cloud_provider || 'gcp'}`;
+    const providerLabel = {
+        gcp: '☁️ GCP',
+        aws: '🟠 AWS',
+        azure: '🔵 Azure'
+    }[diagram.cloud_provider] || diagram.cloud_provider;
+
+    const createdAt = formatDate(diagram.created_at);
+
+    item.innerHTML = `
+        <div class="history-item-header">
+            <span class="history-item-provider ${providerClass}">${providerLabel}</span>
+            <button class="history-item-delete" data-id="${diagram.id}" title="삭제">✕</button>
+        </div>
+        <div class="history-item-description">${escapeHtml(diagram.description || '설명 없음')}</div>
+        <div class="history-item-date">${createdAt}</div>
+    `;
+
+    // Click to load diagram
+    item.addEventListener('click', (e) => {
+        // Don't trigger if delete button was clicked
+        if (e.target.closest('.history-item-delete')) return;
+        loadDiagramFromHistory(diagram);
+    });
+
+    // Delete button
+    const deleteBtn = item.querySelector('.history-item-delete');
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteDiagramFromHistory(diagram.id, item);
+    });
+
+    return item;
+}
+
+function formatDate(isoString) {
+    if (!isoString) return '';
+    try {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return '방금 전';
+        if (diffMins < 60) return `${diffMins}분 전`;
+        if (diffHours < 24) return `${diffHours}시간 전`;
+        if (diffDays < 7) return `${diffDays}일 전`;
+
+        return date.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch {
+        return isoString;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function loadDiagramFromHistory(diagram) {
+    if (!diagram.mermaid_code) {
+        // If mermaid_code not in list response, fetch detail
+        try {
+            const API_BASE_URL = getApiBaseUrl();
+            const response = await fetch(`${API_BASE_URL}/diagrams/${diagram.id}`);
+            if (!response.ok) throw new Error('Failed to fetch diagram');
+            const data = await response.json();
+            diagram.mermaid_code = data.mermaid_code;
+        } catch (error) {
+            console.error('다이어그램 상세 조회 실패:', error);
+            alert('다이어그램을 불러올 수 없습니다.');
+            return;
+        }
+    }
+
+    // Switch to diagram view
+    switchDiagramTab('diagram-view');
+
+    // Render the diagram
+    currentMermaidCode = diagram.mermaid_code;
+
+    showLoading(false);
+    try {
+        await renderMermaidDiagram(diagram.mermaid_code);
+        showDiagramActions();
+    } catch (error) {
+        console.error('다이어그램 렌더링 실패:', error);
+        showError(`다이어그램 렌더링에 실패했습니다.<br><br><strong>오류:</strong> ${error.message}`);
+    }
+
+    // Also populate the manual code editor for easy editing
+    const mermaidCodeInput = document.getElementById('mermaidCode');
+    if (mermaidCodeInput) {
+        mermaidCodeInput.value = diagram.mermaid_code;
+    }
+}
+
+async function deleteDiagramFromHistory(diagramId, itemElement) {
+    if (!confirm('이 다이어그램을 삭제하시겠습니까?')) return;
+
+    try {
+        const API_BASE_URL = getApiBaseUrl();
+        const response = await fetch(`${API_BASE_URL}/diagrams/${diagramId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Remove from DOM with animation
+        itemElement.style.transition = 'all 0.3s ease';
+        itemElement.style.opacity = '0';
+        itemElement.style.transform = 'translateX(20px)';
+        setTimeout(() => {
+            itemElement.remove();
+
+            // Check if list is now empty
+            const historyList = document.getElementById('historyList');
+            if (historyList && historyList.children.length === 0) {
+                historyList.innerHTML = `
+                    <div class="history-empty">
+                        <div class="history-empty-icon">📭</div>
+                        <h3>저장된 다이어그램이 없습니다</h3>
+                        <p>AI로 다이어그램을 생성하면 여기에 표시됩니다.</p>
+                    </div>
+                `;
+            }
+        }, 300);
+
+    } catch (error) {
+        console.error('다이어그램 삭제 실패:', error);
+        alert('삭제에 실패했습니다. 다시 시도해주세요.');
+    }
 }
 
 // Start app when DOM is loaded

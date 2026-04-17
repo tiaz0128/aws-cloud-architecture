@@ -120,25 +120,50 @@
             </div>
 
             <div class="diagram-panel">
-                <div class="diagram-viewport">
-                    <div class="diagram-controls" id="diagramControls">
-                        <button class="control-btn" id="zoomInBtn" title="확대">+</button>
-                        <button class="control-btn" id="zoomOutBtn" title="축소">−</button>
-                        <button class="control-btn" id="resetZoomBtn" title="원본 크기">⤢</button>
-                        <div class="zoom-level" id="zoomLevel">100%</div>
-                    </div>
-                    <div class="diagram-container" id="diagramContainer">
-                        <div class="placeholder" id="placeholder">
-                            <div class="placeholder-icon">📊</div>
-                            <h3>다이어그램이 여기에 표시됩니다</h3>
-                            <p>왼쪽 패널에서 아키텍처를 설명하고 '다이어그램 생성' 버튼을 클릭하세요.</p>
+                <!-- Diagram Panel Tabs -->
+                <div class="diagram-tab-navigation">
+                    <button class="diagram-tab-btn active" data-diagram-tab="diagram-view">📊 다이어그램</button>
+                    <button class="diagram-tab-btn" data-diagram-tab="history-view">📋 히스토리</button>
+                </div>
+
+                <!-- Diagram View -->
+                <div id="diagram-view" class="diagram-tab-content active">
+                    <div class="diagram-viewport">
+                        <div class="diagram-controls" id="diagramControls">
+                            <button class="control-btn" id="zoomInBtn" title="확대">+</button>
+                            <button class="control-btn" id="zoomOutBtn" title="축소">−</button>
+                            <button class="control-btn" id="resetZoomBtn" title="원본 크기">⤢</button>
+                            <div class="zoom-level" id="zoomLevel">100%</div>
+                        </div>
+                        <div class="diagram-container" id="diagramContainer">
+                            <div class="placeholder" id="placeholder">
+                                <div class="placeholder-icon">📊</div>
+                                <h3>다이어그램이 여기에 표시됩니다</h3>
+                                <p>왼쪽 패널에서 아키텍처를 설명하고 '다이어그램 생성' 버튼을 클릭하세요.</p>
+                            </div>
                         </div>
                     </div>
+                    <div class="diagram-actions" id="diagramActions">
+                        <button class="action-btn" data-action="download-svg">SVG 다운로드</button>
+                        <button class="action-btn" data-action="download-png">PNG 다운로드</button>
+                        <button class="action-btn" data-action="copy-code">코드 복사</button>
+                    </div>
                 </div>
-                <div class="diagram-actions" id="diagramActions">
-                    <button class="action-btn" data-action="download-svg">SVG 다운로드</button>
-                    <button class="action-btn" data-action="download-png">PNG 다운로드</button>
-                    <button class="action-btn" data-action="copy-code">코드 복사</button>
+
+                <!-- History View -->
+                <div id="history-view" class="diagram-tab-content">
+                    <div class="history-panel">
+                        <div class="history-header">
+                            <h3>저장된 다이어그램</h3>
+                            <button class="history-refresh-btn" id="refreshHistoryBtn" title="새로고침">🔄</button>
+                        </div>
+                        <div class="history-list" id="historyList">
+                            <div class="history-loading">
+                                <div class="spinner"></div>
+                                <p>불러오는 중...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

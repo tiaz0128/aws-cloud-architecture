@@ -437,6 +437,7 @@ async def list_diagrams(limit: int = 10):
                         "id": diagram["diagram_id"],
                         "description": diagram["description"],
                         "cloud_provider": diagram["cloud_provider"],
+                        "mermaid_code": diagram.get("mermaid_code", ""),
                         "created_at": diagram["created_at"],
                     }
                 )
