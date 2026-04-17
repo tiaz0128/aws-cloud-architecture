@@ -10,6 +10,7 @@ import time
 from typing import Optional
 import boto3
 from botocore.exceptions import ClientError
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,15 @@ class BedrockClient:
         self.region = region or os.getenv("BEDROCK_REGION", os.getenv("AWS_REGION", "us-east-1"))
 
         try:
+            bedrock_config = Config(
+                read_timeout=120,
+                connect_timeout=10,
+                retries={"max_attempts": 0}  # 자체 재시도 로직 사용
+            )
             self.client = boto3.client(
-                service_name="bedrock-runtime", region_name=self.region
+                service_name="bedrock-runtime",
+                region_name=self.region,
+                config=bedrock_config,
             )
             logger.info(
                 f"Bedrock Runtime client initialized: region={self.region}, model={self.model_id}"

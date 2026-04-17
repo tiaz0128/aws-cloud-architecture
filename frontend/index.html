@@ -51,13 +51,16 @@
 
                     <div class="examples">
                         <h3>예시 템플릿</h3>
-                        <div class="example-item" data-example="웹 애플리케이션을 GCP Cloud Run으로 배포하고, Cloud SQL을 데이터베이스로 사용합니다. 앞에 Load Balancer가 있고 정적 파일은 Cloud Storage에 저장됩니다.">
+                        <div class="example-item" data-example="웹 애플리케이션을 컨테이너로 배포하고, 관계형 데이터베이스를 사용합니다. 앞에 로드 밸런서가 있고 정적 파일은 오브젝트 스토리지에 저장됩니다.">
                             📱 웹 앱 + 데이터베이스
                         </div>
-                        <div class="example-item" data-example="마이크로서비스 아키텍처로 API Gateway를 통해 여러 서비스에 라우팅하고, 각 서비스는 독립적인 데이터베이스를 가집니다.">
+                        <div class="example-item" data-example="API Gateway를 통해 여러 마이크로서비스에 라우팅하고, 각 서비스는 독립적인 데이터베이스를 가집니다. 서비스 간 통신은 메시지 큐를 사용합니다.">
                             🔧 마이크로서비스 아키텍처
                         </div>
-                        <div class="example-item" data-example="데이터 파이프라인을 구축합니다. Cloud Storage에서 데이터를 읽어 BigQuery로 처리하고 결과를 시각화합니다.">
+                        <div class="example-item" data-example="서버리스 함수로 REST API를 구성하고, NoSQL 데이터베이스에 데이터를 저장합니다. CDN을 통해 프론트엔드를 배포합니다.">
+                            ⚡ 서버리스 아키텍처
+                        </div>
+                        <div class="example-item" data-example="오브젝트 스토리지에서 데이터를 수집하고, 스트리밍 서비스로 실시간 처리한 뒤 데이터 웨어하우스에 적재합니다. BI 도구로 시각화합니다.">
                             📊 데이터 파이프라인
                         </div>
                     </div>
@@ -71,13 +74,12 @@
                             <textarea id="mermaidCode" name="mermaid_code"
                                 placeholder="architecture-beta
 
-    group api [API Layer]
-    
-    service fastapi(logos:fastapi)[FastAPI App] in api
-    service cloudsql(gcp:cloud-sql)[Cloud SQL] in api
-    
-    user(logos:user)[Users] --> fastapi : HTTP Requests
-    fastapi --> cloudsql : SQL Queries"
+    group api(cloud)[API Layer]
+
+    service app(server)[App Server] in api
+    service db(database)[Database] in api
+
+    app:R -- L:db"
                                 required></textarea>
                         </div>
 
@@ -90,30 +92,39 @@
                         <h3>테스트 예시</h3>
                         <div class="example-item manual-example" data-code="architecture-beta
 
-    group vpc(gcp:virtual_private_cloud)[VPC Network]
-    
-    service app(gcp:cloud_run)[Cloud Run App] in vpc
-    service db(gcp:cloud_sql)[Cloud SQL] in vpc
+    group vpc(aws:amazon_virtual_private_cloud)[VPC]
 
+    service alb(aws:elastic_load_balancing_application_load_balancer)[ALB] in vpc
+    service app(aws:amazon_ec2_db_instance)[EC2 App] in vpc
+    service db(aws:amazon_rds_multi_az)[RDS Database] in vpc
+
+    alb:R -- L:app
     app:R -- L:db">
-                            🔧 간단한 GCP 앱
+                            🟠 AWS 3-Tier 웹앱
                         </div>
                         <div class="example-item manual-example" data-code="architecture-beta
 
-    group python(custom:python)[Python]
-    service web(custom:react)[Web App]
-    service api(custom:fastapi)[API Server] in python
-    
-    web:R -- L:api">
-                            ☁️ 웹-API 연결
-                        </div>
-                        <div class="example-item manual-example" data-code="architecture-beta
+    group cloud(logos:google-cloud)[GCP]
 
-    group cloud(gcp:google_cloud)[Cloud Services]
-    
+    service run(gcp:cloud_run)[Cloud Run] in cloud
+    service sql(gcp:cloud_sql)[Cloud SQL] in cloud
     service storage(gcp:cloud_storage)[Storage] in cloud
-    service compute(gcp:compute_engine)[Compute] in cloud">
-                            📱 기본 서비스
+
+    run:R -- L:sql
+    run:B -- T:storage">
+                            ☁️ GCP 컨테이너 앱
+                        </div>
+                        <div class="example-item manual-example" data-code="architecture-beta
+
+    group azure(logos:microsoft-azure)[Azure]
+
+    service func(azr:functions)[Functions] in azure
+    service cosmos(azr:azure_cosmos_db)[Cosmos DB] in azure
+    service blob(azr:blob_block)[Blob Storage] in azure
+
+    func:R -- L:cosmos
+    func:B -- T:blob">
+                            🔵 Azure 서버리스
                         </div>
                     </div>
                 </div>
@@ -148,6 +159,7 @@
                         <button class="action-btn" data-action="download-png">PNG 다운로드</button>
                         <button class="action-btn" data-action="copy-code">코드 복사</button>
                         <button class="action-btn share-btn" data-action="share">🔗 공유</button>
+                        <button class="action-btn iac-btn" data-action="export-iac">📦 IaC 내보내기</button>
                     </div>
                     <!-- Inline Code Editor -->
                     <div class="code-editor-panel" id="codeEditorPanel">
@@ -190,7 +202,7 @@
                     <p>AI로 클라우드 아키텍처를 간단하게 시각화하는 도구</p>
                 </div>
                 <div class="footer-links">
-                    <a href="https://github.com/tiaz0128/gcp-cloud-architecture" target="_blank" rel="noreferrer" class="github-link">
+                    <a href="https://github.com/tiaz0128/aws-cloud-architecture" target="_blank" rel="noreferrer" class="github-link">
                         <svg class="github-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path>
                         </svg>
@@ -202,6 +214,52 @@
                 <p>&copy; 2025 Cloud Architecture Diagram Generator.</p>
             </div>
         </footer>
+    </div>
+
+    <!-- IaC Export Modal -->
+    <div class="modal-overlay" id="iacModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📦 IaC 코드 내보내기</h3>
+                <button class="modal-close" id="iacModalClose">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Options -->
+                <div id="iacOptions">
+                    <div class="iac-option-group">
+                        <label>IaC 타입</label>
+                        <div class="iac-type-selector">
+                            <button class="iac-type-btn active" data-iac-type="terraform">
+                                <span class="iac-type-icon">🏗️</span>
+                                <span>Terraform</span>
+                                <small>HCL</small>
+                            </button>
+                            <button class="iac-type-btn" data-iac-type="cloudformation">
+                                <span class="iac-type-icon">☁️</span>
+                                <span>CloudFormation</span>
+                                <small>YAML</small>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="generate-btn" id="generateIaCBtn">
+                        <span id="iacBtnText">IaC 코드 생성</span>
+                    </button>
+                    <p class="iac-disclaimer">⚠️ AI가 생성한 참고용 코드입니다. 배포 전 반드시 검토하세요.</p>
+                </div>
+                <!-- Step 2: Result -->
+                <div id="iacResult" style="display:none;">
+                    <div class="iac-result-header">
+                        <span id="iacResultLabel"></span>
+                        <div class="iac-result-actions">
+                            <button class="code-editor-btn" id="iacCopyBtn">📋 복사</button>
+                            <button class="code-editor-btn" id="iacDownloadBtn">💾 다운로드</button>
+                            <button class="code-editor-btn" id="iacBackBtn">← 다시 생성</button>
+                        </div>
+                    </div>
+                    <pre class="iac-code-viewer"><code id="iacCodeContent"></code></pre>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="toast" aria-live="polite"></div>

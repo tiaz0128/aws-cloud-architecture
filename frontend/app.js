@@ -527,6 +527,9 @@ function handleActionClick(event) {
         case 'share':
             shareDiagram();
             break;
+        case 'export-iac':
+            openIaCModal();
+            break;
     }
 }
 
@@ -587,6 +590,9 @@ function initializeApp() {
 
     // Initialize inline code editor
     initializeCodeEditor();
+
+    // Initialize IaC export modal
+    initializeIaCModal();
 
     console.log('앱 초기화 완료');
     console.log('API URL:', getApiBaseUrl());
@@ -1036,6 +1042,153 @@ function resetEditorCode() {
         editor.value = originalMermaidCode;
         showToast('원래 코드로 복원되었습니다.', 'info');
     }
+}
+
+// IaC Export
+let selectedIaCType = 'terraform';
+let lastIaCCode = '';
+let lastIaCFilename = '';
+
+function initializeIaCModal() {
+    const closeBtn = document.getElementById('iacModalClose');
+    const generateBtn = document.getElementById('generateIaCBtn');
+    const copyBtn = document.getElementById('iacCopyBtn');
+    const downloadBtn = document.getElementById('iacDownloadBtn');
+    const backBtn = document.getElementById('iacBackBtn');
+    const overlay = document.getElementById('iacModal');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeIaCModal);
+    if (generateBtn) generateBtn.addEventListener('click', generateIaCCode);
+    if (copyBtn) copyBtn.addEventListener('click', copyIaCCode);
+    if (downloadBtn) downloadBtn.addEventListener('click', downloadIaCCode);
+    if (backBtn) backBtn.addEventListener('click', showIaCOptions);
+
+    // Close on overlay click
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeIaCModal();
+        });
+    }
+
+    // IaC type selector
+    document.querySelectorAll('.iac-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.iac-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedIaCType = btn.dataset.iacType;
+        });
+    });
+}
+
+function openIaCModal() {
+    if (!currentMermaidCode) {
+        showToast('먼저 다이어그램을 생성하세요.', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('iacModal');
+    if (modal) {
+        modal.classList.add('visible');
+        showIaCOptions();
+    }
+}
+
+function closeIaCModal() {
+    const modal = document.getElementById('iacModal');
+    if (modal) modal.classList.remove('visible');
+}
+
+function showIaCOptions() {
+    const options = document.getElementById('iacOptions');
+    const result = document.getElementById('iacResult');
+    if (options) options.style.display = 'block';
+    if (result) result.style.display = 'none';
+
+    // Reset button state
+    const btnText = document.getElementById('iacBtnText');
+    const btn = document.getElementById('generateIaCBtn');
+    if (btnText) btnText.textContent = 'IaC 코드 생성';
+    if (btn) btn.disabled = false;
+}
+
+async function generateIaCCode() {
+    const btnText = document.getElementById('iacBtnText');
+    const btn = document.getElementById('generateIaCBtn');
+
+    if (btnText) btnText.textContent = '생성 중...';
+    if (btn) btn.disabled = true;
+
+    try {
+        const API_BASE_URL = getApiBaseUrl();
+
+        // Determine cloud provider from current context
+        const cloudProvider = document.getElementById('cloudProvider')?.value || 'aws';
+
+        const response = await fetch(`${API_BASE_URL}/export-iac`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mermaid_code: currentMermaidCode,
+                description: document.getElementById('description')?.value || '',
+                cloud_provider: cloudProvider,
+                iac_type: selectedIaCType
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `HTTP error ${response.status}`);
+        }
+
+        const data = await response.json();
+        lastIaCCode = data.iac_code;
+        lastIaCFilename = data.filename;
+
+        // Show result
+        const options = document.getElementById('iacOptions');
+        const result = document.getElementById('iacResult');
+        const label = document.getElementById('iacResultLabel');
+        const codeContent = document.getElementById('iacCodeContent');
+
+        if (options) options.style.display = 'none';
+        if (result) result.style.display = 'block';
+        if (label) {
+            const typeLabel = selectedIaCType === 'terraform' ? '🏗️ Terraform' : '☁️ CloudFormation';
+            label.textContent = `${typeLabel} — ${data.filename}`;
+        }
+        if (codeContent) codeContent.textContent = data.iac_code;
+
+    } catch (error) {
+        console.error('IaC 생성 실패:', error);
+        showToast(`IaC 코드 생성 실패: ${error.message}`, 'error');
+
+        if (btnText) btnText.textContent = 'IaC 코드 생성';
+        if (btn) btn.disabled = false;
+    }
+}
+
+function copyIaCCode() {
+    if (!lastIaCCode) return;
+
+    navigator.clipboard.writeText(lastIaCCode).then(() => {
+        showToast('IaC 코드가 클립보드에 복사되었습니다!', 'success');
+    }).catch(() => {
+        showToast('복사에 실패했습니다.', 'error');
+    });
+}
+
+function downloadIaCCode() {
+    if (!lastIaCCode) return;
+
+    const blob = new Blob([lastIaCCode], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = lastIaCFilename || 'architecture.tf';
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showToast(`${lastIaCFilename} 다운로드 완료`, 'success');
 }
 
 // Share functionality

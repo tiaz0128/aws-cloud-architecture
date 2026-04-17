@@ -6,6 +6,8 @@ from botocore.exceptions import ClientError
 from dynamodb_client import DynamoDBClient
 from bedrock_client import BedrockClient
 import os
+import asyncio
+from functools import partial
 from datetime import datetime
 import logging
 
@@ -113,6 +115,13 @@ class DiagramResponse(BaseModel):
     description: str
     cloud_provider: str
     created_at: str
+
+
+class IaCExportRequest(BaseModel):
+    mermaid_code: str
+    description: str = ""
+    cloud_provider: str = "aws"
+    iac_type: str = "terraform"  # "terraform" | "cloudformation"
 
 
 @app.post("/generate-diagram", response_model=DiagramResponse)
@@ -327,8 +336,11 @@ async def generate_diagram(request: DiagramRequest):
         이제 위 규칙을 엄격히 따라 architecture-beta Mermaid 코드만 생성해주세요:
 """
 
-        # Bedrock (Claude) 호출
-        mermaid_code = bedrock_client.generate_diagram_code(prompt)
+        # Bedrock (Claude) 호출 — 비동기로 실행하여 다른 요청 블로킹 방지
+        loop = asyncio.get_event_loop()
+        mermaid_code = await loop.run_in_executor(
+            None, partial(bedrock_client.generate_diagram_code, prompt)
+        )
 
         # 코드 블록 제거 (```로 감싸진 부분)
         if "```" in mermaid_code:
@@ -533,6 +545,102 @@ async def delete_diagram(diagram_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/export-iac")
+async def export_iac(request: IaCExportRequest):
+    """Mermaid 아키텍처 다이어그램을 IaC 코드(Terraform/CloudFormation)로 변환"""
+    try:
+        if bedrock_client is None:
+            raise HTTPException(
+                status_code=503, detail="Bedrock 서비스를 사용할 수 없습니다"
+            )
+
+        iac_type_label = {
+            "terraform": "Terraform (HCL)",
+            "cloudformation": "AWS CloudFormation (YAML)",
+        }.get(request.iac_type, request.iac_type)
+
+        cloud_label = request.cloud_provider.upper()
+
+        prompt = f"""다음 Mermaid architecture-beta 다이어그램과 설명을 기반으로 {iac_type_label} 코드를 생성해주세요.
+
+## 입력 정보
+
+**클라우드 제공자:** {cloud_label}
+**사용자 설명:** {request.description or '(없음)'}
+
+**Mermaid 아키텍처 코드:**
+```
+{request.mermaid_code}
+```
+
+## 요구사항
+
+1. 위 다이어그램에 나타난 모든 서비스/리소스를 {iac_type_label} 코드로 변환하세요.
+2. 서비스 간 연결(Edge)을 분석하여 필요한 네트워킹, 보안 그룹, IAM 역할 등을 추가하세요.
+3. 실제 배포 가능한 수준의 합리적인 기본값을 사용하세요:
+   - 리전: ap-northeast-1 (도쿄) 기본
+   - 인스턴스: 비용 효율적인 소형 사이즈
+   - 네트워킹: 기본 VPC/서브넷 구성 포함
+4. 주석으로 각 리소스가 다이어그램의 어떤 서비스에 해당하는지 표시하세요.
+5. 변수(variables)를 활용하여 커스터마이징이 쉽도록 하세요.
+
+## 출력 형식
+
+"""
+
+        if request.iac_type == "terraform":
+            prompt += """Terraform HCL 코드만 출력하세요. 설명 텍스트 없이 코드 블록만 반환하세요.
+provider 블록, 필요한 variable 블록, resource 블록, output 블록을 포함하세요."""
+        else:
+            prompt += """AWS CloudFormation YAML 코드만 출력하세요. 설명 텍스트 없이 코드 블록만 반환하세요.
+AWSTemplateFormatVersion, Description, Parameters, Resources, Outputs 섹션을 포함하세요."""
+
+        # Bedrock 호출 — 비동기로 실행하여 다른 요청 블로킹 방지
+        loop = asyncio.get_event_loop()
+        iac_code = await loop.run_in_executor(
+            None, partial(bedrock_client.generate_diagram_code, prompt)
+        )
+
+        # 코드 블록 마커 제거
+        if "```" in iac_code:
+            lines = iac_code.split("\n")
+            start_idx = -1
+            end_idx = -1
+
+            for i, line in enumerate(lines):
+                if line.strip().startswith("```"):
+                    if start_idx == -1:
+                        start_idx = i
+                    else:
+                        end_idx = i
+                        break
+
+            if start_idx != -1 and end_idx != -1:
+                iac_code = "\n".join(lines[start_idx + 1 : end_idx])
+            elif start_idx != -1:
+                iac_code = "\n".join(lines[start_idx + 1 :])
+
+        iac_code = iac_code.strip()
+
+        file_extension = "tf" if request.iac_type == "terraform" else "yaml"
+        filename = f"architecture.{file_extension}"
+
+        logger.info(f"IaC 코드 생성 완료: {request.iac_type} ({len(iac_code)} chars)")
+
+        return {
+            "iac_code": iac_code,
+            "iac_type": request.iac_type,
+            "filename": filename,
+            "cloud_provider": request.cloud_provider,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"IaC 코드 생성 실패: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"IaC 코드 생성 실패: {str(e)}")
+
+
 @app.get("/")
 async def root():
     return {
@@ -544,6 +652,7 @@ async def root():
             "GET /diagrams": "다이어그램 목록",
             "PUT /diagrams/{id}": "다이어그램 수정",
             "DELETE /diagrams/{id}": "다이어그램 삭제",
+            "POST /export-iac": "IaC 코드 내보내기",
         },
     }
 
