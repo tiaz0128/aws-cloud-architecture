@@ -149,6 +149,20 @@
                         <button class="action-btn" data-action="copy-code">코드 복사</button>
                         <button class="action-btn share-btn" data-action="share">🔗 공유</button>
                     </div>
+                    <!-- Inline Code Editor -->
+                    <div class="code-editor-panel" id="codeEditorPanel">
+                        <div class="code-editor-header" id="codeEditorToggle">
+                            <span class="code-editor-title">✏️ 코드 편집</span>
+                            <span class="code-editor-chevron" id="codeEditorChevron">▲</span>
+                        </div>
+                        <div class="code-editor-body" id="codeEditorBody">
+                            <textarea id="inlineCodeEditor" class="inline-code-editor" spellcheck="false"></textarea>
+                            <div class="code-editor-actions">
+                                <button class="code-editor-btn primary" id="reRenderBtn">▶ 재렌더링</button>
+                                <button class="code-editor-btn" id="resetCodeBtn">↩ 원래 코드로</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- History View -->

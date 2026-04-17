@@ -7,6 +7,7 @@ const CONFIG = {
 // Global state
 let currentMermaidCode = '';
 let currentDiagramId = '';
+let originalMermaidCode = '';
 let mermaidCounter = 0;
 let currentTab = 'ai-generator';
 let currentDiagramTab = 'diagram-view';
@@ -144,6 +145,8 @@ function showDiagramActions() {
     if (actionsElement) {
         actionsElement.style.display = 'flex';
     }
+    // Show and populate inline code editor
+    showCodeEditor(currentMermaidCode);
 }
 
 function showError(message) {
@@ -215,6 +218,7 @@ async function generateDiagram() {
 
         console.log('API 응답 성공, 다이어그램 렌더링 시작');
         currentMermaidCode = data.mermaid_code;
+        originalMermaidCode = data.mermaid_code;
         currentDiagramId = data.id || '';
         await renderMermaidDiagram(currentMermaidCode);
         showDiagramActions();
@@ -581,6 +585,9 @@ function initializeApp() {
     // Initialize SVG controls
     initializeSVGControls();
 
+    // Initialize inline code editor
+    initializeCodeEditor();
+
     console.log('앱 초기화 완료');
     console.log('API URL:', getApiBaseUrl());
 
@@ -883,6 +890,7 @@ async function loadDiagramFromHistory(diagram) {
 
     // Render the diagram
     currentMermaidCode = diagram.mermaid_code;
+    originalMermaidCode = diagram.mermaid_code;
     currentDiagramId = diagram.id || '';
 
     showLoading(false);
@@ -937,6 +945,96 @@ async function deleteDiagramFromHistory(diagramId, itemElement) {
     } catch (error) {
         console.error('다이어그램 삭제 실패:', error);
         alert('삭제에 실패했습니다. 다시 시도해주세요.');
+    }
+}
+
+// Inline Code Editor
+function initializeCodeEditor() {
+    const toggle = document.getElementById('codeEditorToggle');
+    const reRenderBtn = document.getElementById('reRenderBtn');
+    const resetCodeBtn = document.getElementById('resetCodeBtn');
+    const editor = document.getElementById('inlineCodeEditor');
+
+    if (toggle) {
+        toggle.addEventListener('click', toggleCodeEditor);
+    }
+
+    if (reRenderBtn) {
+        reRenderBtn.addEventListener('click', reRenderFromEditor);
+    }
+
+    if (resetCodeBtn) {
+        resetCodeBtn.addEventListener('click', resetEditorCode);
+    }
+
+    // Tab key support in editor
+    if (editor) {
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+            }
+        });
+    }
+}
+
+function showCodeEditor(code) {
+    const panel = document.getElementById('codeEditorPanel');
+    const editor = document.getElementById('inlineCodeEditor');
+
+    if (panel && editor) {
+        panel.classList.add('visible');
+        panel.classList.remove('collapsed');
+        editor.value = code;
+    }
+}
+
+function toggleCodeEditor() {
+    const panel = document.getElementById('codeEditorPanel');
+    if (panel) {
+        panel.classList.toggle('collapsed');
+    }
+}
+
+async function reRenderFromEditor() {
+    const editor = document.getElementById('inlineCodeEditor');
+    if (!editor) return;
+
+    const code = editor.value.trim();
+    if (!code) {
+        showToast('코드를 입력해주세요.', 'warning');
+        return;
+    }
+
+    if (!code.toLowerCase().includes('architecture-beta')) {
+        showToast('코드가 "architecture-beta"를 포함해야 합니다.', 'warning');
+        return;
+    }
+
+    try {
+        currentMermaidCode = code;
+        await renderMermaidDiagram(code);
+        showToast('다이어그램이 업데이트되었습니다.', 'success');
+
+        // Also sync to manual code tab
+        const mermaidCodeInput = document.getElementById('mermaidCode');
+        if (mermaidCodeInput) {
+            mermaidCodeInput.value = code;
+        }
+    } catch (error) {
+        console.error('재렌더링 실패:', error);
+        showToast('렌더링에 실패했습니다. 코드를 확인해주세요.', 'error');
+    }
+}
+
+function resetEditorCode() {
+    const editor = document.getElementById('inlineCodeEditor');
+    if (editor && originalMermaidCode) {
+        editor.value = originalMermaidCode;
+        showToast('원래 코드로 복원되었습니다.', 'info');
     }
 }
 
@@ -997,6 +1095,7 @@ async function checkSharedDiagram() {
 
         currentMermaidCode = data.mermaid_code;
         currentDiagramId = sharedId;
+        originalMermaidCode = data.mermaid_code;
 
         await renderMermaidDiagram(data.mermaid_code);
         showDiagramActions();

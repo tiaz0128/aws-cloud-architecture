@@ -638,6 +638,110 @@ body {
     background: #2563eb;
 }
 
+/* Inline Code Editor Panel */
+.code-editor-panel {
+    display: none;
+    border-top: 1px solid #e2e8f0;
+    background: #1e293b;
+}
+
+.code-editor-panel.visible {
+    display: block;
+}
+
+.code-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    cursor: pointer;
+    user-select: none;
+    background: #334155;
+    transition: background 0.2s ease;
+}
+
+.code-editor-header:hover {
+    background: #3b4d63;
+}
+
+.code-editor-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.code-editor-chevron {
+    font-size: 12px;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+}
+
+.code-editor-panel.collapsed .code-editor-chevron {
+    transform: rotate(180deg);
+}
+
+.code-editor-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.code-editor-panel.collapsed .code-editor-body {
+    display: none;
+}
+
+.inline-code-editor {
+    width: 100%;
+    height: 180px;
+    padding: 12px 15px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    tab-size: 4;
+}
+
+.inline-code-editor::placeholder {
+    color: #475569;
+}
+
+.code-editor-actions {
+    display: flex;
+    gap: 8px;
+    padding: 10px 15px;
+    background: #334155;
+}
+
+.code-editor-btn {
+    padding: 7px 16px;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.code-editor-btn:hover {
+    background: #475569;
+    color: #f1f5f9;
+}
+
+.code-editor-btn.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+
+.code-editor-btn.primary:hover {
+    background: #1d4ed8;
+}
+
 /* Mermaid Styles */
 .mermaid {
     background: white !important;
